@@ -1,0 +1,13 @@
+"groups":{
+"School characteristics":{"expanded":true}
+},"chart":{
+"defaultY":"RWM expected standard, 2019, %"
+},"hints":{
+"product_name" : "<i>Schools Like Yours</i>",
+"group_singular" : "list of <i>Schools Like Yours</i>",
+"subject_singular" : "school",
+"subject_plural" : "schools",
+"search_terms" : "school name, DfE number or URN",
+"scope" : "England"
+},"welcome":"<p><strong>Welcome to [product_name]</strong></p><p>This tool lets you identify [subject_plural] similar to your own - and lets you define what <em>similar</em> means.</p><p>To begin, search for your [subject_singular] in the box on the left. You can search by [search_terms].</p>"
+,
