@@ -431,7 +431,7 @@ if object_id('tempdb.dbo.#absence', 'u') is not null
 	drop table #absence;
 
 select
-	level,
+	geographic_level,
 	school_type,
 	isnull(cast(p.new_laestab as real), a.laestab) laestab,
 	a.laestab orig_laestab,
@@ -439,19 +439,19 @@ select
 	case
 		when isnumeric(sess_overall_percent)=1 then sess_overall_percent/100.0 			-- needs to be in range 0-1 for funnel plots to work
 		else null
-	end total_absence_2018,
+	end total_absence,
 	case
 		when isnumeric(enrolments_pa_10_exact_percent)=1 then enrolments_pa_10_exact_percent/100.0
 		else null
-	end persistent_absence_2018,
+	end persistent_absence,
 	count(1) over (partition by isnull(cast(p.new_laestab as real), a.laestab)) dups		-- used to exclude schools that appear in source data more than once, on the grounds that there has e.g. been a merger, and using either individual record wouldn't be accurate
 into #absence
-from public_data.sfr.absence2018 a
+from public_data.sfr.absence2019 a
 	left join public_data.organisation.predecessors p
 		on a.laestab=p.old_laestab
 where
-	level in ('national','school') and
-	year='201718'
+	geographic_level in ('national','school') and
+	time_period='201819'
 
 update t
 set t.laestab=orig_laestab
@@ -736,10 +736,10 @@ if object_id('tempdb..#capacity') is not null
 select
 	isnull(cast(p.new_laestab as real), a.laestab) laestab,
 	a.laestab orig_laestab,
-	cast(maynor as real)/netcapacity pct_capacity_2018,
+	cast(maynor as real)/netcapacity pct_capacity,
 	count(1) over (partition by isnull(p.new_laestab, a.laestab)) dups
 into #capacity
-from cap.school_capacity_2018 a
+from cap.school_capacity_2019 a
 	left join public_data.organisation.predecessors p
 		on a.laestab=p.old_laestab
 
@@ -889,7 +889,7 @@ select
 	isnull('"' + datalab.fos.setNonNumericsToNull(b.urbanrural_code)+'"','""') urbanrural_code,
 	isnull(cast(case when xy.coastal_la=1 and xy.distance<=5500 then 1 else 0 end  as varchar(max)),'""') coastal,
 	isnull('[' + datalab.fos.setNonNumericsToNull(b.easting)+','+datalab.fos.setNonNumericsToNull(b.northing)+']','""') grid_ref,
-	isnull(datalab.fos.setNonNumericsToNull(cap.pct_capacity_2018),'""') pct_capacity,
+	isnull(datalab.fos.setNonNumericsToNull(cap.pct_capacity),'""') pct_capacity,
 	isnull(cast(o.latest_ofsted as varchar(max)),'""') latest_ofsted,
 	isnull(datalab.fos.setNonNumericsToNull(c.pupils),'""') pupils,
 	isnull(datalab.fos.setNonNumericsToNull(c.comp_pupils),'""') comp_pupils,
@@ -937,8 +937,8 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(y2.a8),'""') a8_2017,
 	isnull(datalab.fos.setNonNumericsToNull(y2.p8),'""') p8_2017,
 	isnull(datalab.fos.setNonNumericsToNull(y2.basics),'""') basics_2017,
-	isnull(datalab.fos.setNonNumericsToNull(a.total_absence_2018),'""') total_absence_2018,
-	isnull(datalab.fos.setNonNumericsToNull(a.persistent_absence_2018),'""') persistent_absence_2018,
+	isnull(datalab.fos.setNonNumericsToNull(a.total_absence),'""') total_absence,
+	isnull(datalab.fos.setNonNumericsToNull(a.persistent_absence),'""') persistent_absence,
 	isnull(datalab.fos.setNonNumericsToNull(w.total_teachers),'""') total_teachers,
 	isnull(datalab.fos.setNonNumericsToNull(w.total_teachers_fte),'""') total_teachers_fte,
 	isnull(datalab.fos.setNonNumericsToNull(w.pupil_teacher_ratio),'""') pupil_teacher_ratio,
@@ -1053,8 +1053,8 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(y2.a8),'""') a8_2017,
 	isnull(datalab.fos.setNonNumericsToNull(y2.p8),'""') p8_2017,
 	isnull(datalab.fos.setNonNumericsToNull(y2.basics),'""') basics_2017,
-	isnull(datalab.fos.setNonNumericsToNull(a.total_absence_2018),'""') total_absence_2018,
-	isnull(datalab.fos.setNonNumericsToNull(a.persistent_absence_2018),'""') persistent_absence_2018,
+	isnull(datalab.fos.setNonNumericsToNull(a.total_absence),'""') total_absence,
+	isnull(datalab.fos.setNonNumericsToNull(a.persistent_absence),'""') persistent_absence,
 	'""' total_teachers,		-- NB: no school workforce national average figures added as they aren't broken down by phase
 	'""' total_teachers_fte,
 	'""' pupil_teacher_ratio,
@@ -1082,7 +1082,7 @@ from #ks4_y0 y0
 		select *
 		from #absence
 		where
-			level='national' and
+			geographic_level='national' and
 			school_type='state-funded secondary'		-- NB: needs updating for KS2/KS4
 	) a
 	outer apply (

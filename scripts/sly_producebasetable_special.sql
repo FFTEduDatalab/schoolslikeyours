@@ -99,7 +99,7 @@ select		-- XXX check against delivery
 	ptrwm_exp_3yr ptrwm_exp_3yr_2019,
 	count(1) over (partition by isnull(new_laestab,lea*10000+estab)) dups
 into #ks2_y0
-from pt.ks2revised2019edited f
+from pt.ks2final2019edited f
 	left join public_data.organisation.predecessors p
 		on f.lea*10000+estab=old_laestab
 where
@@ -526,7 +526,7 @@ if object_id('tempdb.dbo.#absence', 'u') is not null
 	drop table #absence;
 
 select
-	level,
+	geographic_level,
 	school_type,
 	isnull(cast(p.new_laestab as real), a.laestab) laestab,
 	a.laestab orig_laestab,
@@ -534,19 +534,19 @@ select
 	case
 		when isnumeric(sess_overall_percent)=1 then sess_overall_percent/100.0 			-- needs to be in range 0-1 for funnel plots to work
 		else null
-	end total_absence_2018,
+	end total_absence,
 	case
 		when isnumeric(enrolments_pa_10_exact_percent)=1 then enrolments_pa_10_exact_percent/100.0
 		else null
-	end persistent_absence_2018,
+	end persistent_absence,
 	count(1) over (partition by isnull(cast(p.new_laestab as real), a.laestab)) dups		-- used to exclude schools that appear in source data more than once, on the grounds that there has e.g. been a merger, and using either individual record wouldn't be accurate
 into #absence
-from public_data.sfr.absence2018 a
+from public_data.sfr.absence2019 a
 	left join public_data.organisation.predecessors p
 		on a.laestab=p.old_laestab
 where
-	level in ('national','school') and
-	year='201718'
+	geographic_level in ('national','school') and
+	time_period='201819'
 
 update t
 set t.laestab=orig_laestab
@@ -1001,8 +1001,8 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(ks4.basics),'""') basics_2019,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.tavent_g),'""') tavent_g_2019,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.tavent_e),'""') tavent_e_2019,
-	isnull(datalab.fos.setNonNumericsToNull(a.total_absence_2018),'""') total_absence_2018,
-	isnull(datalab.fos.setNonNumericsToNull(a.persistent_absence_2018),'""') persistent_absence_2018,
+	isnull(datalab.fos.setNonNumericsToNull(a.total_absence),'""') total_absence,
+	isnull(datalab.fos.setNonNumericsToNull(a.persistent_absence),'""') persistent_absence,
 	isnull(datalab.fos.setNonNumericsToNull(w.total_teachers),'""') total_teachers,
 	isnull(datalab.fos.setNonNumericsToNull(w.total_teachers_fte),'""') total_teachers_fte,
 	isnull(datalab.fos.setNonNumericsToNull(w.pupil_teacher_ratio),'""') pupil_teacher_ratio,

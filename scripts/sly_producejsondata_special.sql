@@ -116,8 +116,8 @@ select
 		when c.name='basics_2019' then 'Basics (percentage of pupils achieving grades 9-4 in English and maths), 2018/19'
 		when c.name='tavent_g_2019' then 'Average number of GCSE entries per pupil, 2018/19'
 		when c.name='tavent_e_2019' then 'Average number of GCSE and equivalents entries per pupil, 2018/19'
-		when c.name='total_absence_2018' then 'Overall absence rate, 2017/18'
-		when c.name='persistent_absence_2018' then 'Percentage of enrolments classed as persistent absentees (missing 10 percent or more of sessions), 2017/18'
+		when c.name='total_absence' then 'Overall absence rate, 2018/19'
+		when c.name='persistent_absence' then 'Percentage of enrolments classed as persistent absentees (missing 10 percent or more of sessions), 2018/19'
 		when c.name='total_teachers' then 'Total number of teachers'
 		when c.name='total_teachers_fte' then 'Full-time equivalent teachers'
 		when c.name='assistant_teacher_ratio' then 'Teaching assistant:teacher ratio'
@@ -191,8 +191,8 @@ select
 		when c.name='basics_2019' then 'KS4 performance'
 		when c.name='tavent_g_2019' then 'KS4 performance'
 		when c.name='tavent_e_2019' then 'KS4 performance'
-		when c.name='total_absence_2018' then 'Absence'
-		when c.name='persistent_absence_2018' then 'Absence'
+		when c.name='total_absence' then 'Absence'
+		when c.name='persistent_absence' then 'Absence'
 		when c.name='total_teachers' then 'Workforce'
 		when c.name='total_teachers_fte' then 'Workforce'
 		when c.name='assistant_teacher_ratio' then 'Workforce'
@@ -401,8 +401,8 @@ update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"P8 pupils, 
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"KS4 pupils, 2019"' where column_name='basics_2019';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"KS4 pupils, 2019"' where column_name='tavent_e_2019';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"KS4 pupils, 2019"' where column_name='tavent_g_2019';
-update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='total_absence_2018';
-update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='persistent_absence_2018';
+update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='total_absence';
+update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='persistent_absence';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='total_teachers';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='total_teachers_fte';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='pupil_teacher_ratio';
@@ -481,8 +481,8 @@ update #meta set field_name = 'Progress 8, open slots, 2019' where column_name =
 update #meta set field_name = 'Basics, 2019' where column_name = 'basics_2019';
 update #meta set field_name = 'Average entries, GCSEs, 2019' where column_name = 'tavent_g_2019';
 update #meta set field_name = 'Average entries, GCSEs and equivalents, 2019' where column_name = 'tavent_e_2019';
-update #meta set field_name = 'Absence rate' where column_name = 'total_absence_2018';
-update #meta set field_name = 'Persistent absentee rate' where column_name = 'persistent_absence_2018';
+update #meta set field_name = 'Absence rate' where column_name = 'total_absence';
+update #meta set field_name = 'Persistent absentee rate' where column_name = 'persistent_absence';
 update #meta set field_name = 'Teachers' where column_name = 'total_teachers';
 update #meta set field_name = 'Teachers, FTE' where column_name = 'total_teachers_fte';
 update #meta set field_name = 'Assistant:teacher ratio' where column_name = 'assistant_teacher_ratio';
@@ -605,8 +605,8 @@ select
 	+basics_2019+','
 	+tavent_g_2019+','
 	+tavent_e_2019+','
-	+total_absence_2018+','
-	+persistent_absence_2018+','
+	+total_absence+','
+	+persistent_absence+','
 	+total_teachers+','
 	+total_teachers_fte+','
 	+pupil_teacher_ratio+','

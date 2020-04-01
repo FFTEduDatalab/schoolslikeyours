@@ -137,8 +137,8 @@ select
 		when c.name='ptwritta_high_2017' then 'Percentage of pupils working at greater depth in writing, 2016/17'
 		when c.name='ptgps_exp_2017' then 'Percentage of pupils reaching the expected standard in grammar, punctuation and spelling, 2016/17'
 		when c.name='ptgps_high_2017' then 'Percentage of pupils achieving a high score in grammar, punctuation and spelling, 2016/17'
-		when c.name='total_absence_2018' then 'Overall absence rate, 2017/18'
-		when c.name='persistent_absence_2018' then 'Percentage of enrolments classed as persistent absentees (missing 10 percent or more of sessions), 2017/18'
+		when c.name='total_absence' then 'Overall absence rate, 2018/19'
+		when c.name='persistent_absence' then 'Percentage of enrolments classed as persistent absentees (missing 10 percent or more of sessions), 2018/19'
 		when c.name='total_teachers' then 'Total number of teachers'
 		when c.name='total_teachers_fte' then 'Full-time equivalent teachers'
 		when c.name='assistant_teacher_ratio' then 'Teaching assistant:teacher ratio'
@@ -233,8 +233,8 @@ select
 		when c.name='ptwritta_high_2017' then 'KS2 performance, 2017'
 		when c.name='ptgps_exp_2017' then 'KS2 performance, 2017'
 		when c.name='ptgps_high_2017' then 'KS2 performance, 2017'
-		when c.name='total_absence_2018' then 'Absence'
-		when c.name='persistent_absence_2018' then 'Absence'
+		when c.name='total_absence' then 'Absence'
+		when c.name='persistent_absence' then 'Absence'
 		when c.name='total_teachers' then 'Workforce'
 		when c.name='total_teachers_fte' then 'Workforce'
 		when c.name='assistant_teacher_ratio' then 'Workforce'
@@ -465,8 +465,8 @@ update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"KS2 pupils, 
 update #meta set chart='"type":"funnel","stdDev":6.1298,"xEnabled":true,"defaultX":"KS2 reading pupils, 2017-2019"' where column_name='readprog_3yr_2019';
 update #meta set chart='"type":"funnel","stdDev":5.8266,"xEnabled":true,"defaultX":"KS2 writing pupils, 2017-2019"' where column_name='writprog_3yr_2019';
 update #meta set chart='"type":"funnel","stdDev":5.4817,"xEnabled":true,"defaultX":"KS2 maths pupils, 2017-2019"' where column_name='matprog_3yr_2019';
-update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='total_absence_2018';
-update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='persistent_absence_2018';
+update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='total_absence';
+update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Compulsory school age pupils"' where column_name='persistent_absence';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='total_teachers';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='total_teachers_fte';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='pupil_teacher_ratio';
@@ -576,8 +576,8 @@ update #meta set field_name = 'RWM expected standard, 2017-2019, %' where column
 update #meta set field_name = 'Reading progress, 2017-2019' where column_name = 'readprog_3yr_2019';
 update #meta set field_name = 'Writing progress, 2017-2019' where column_name = 'writprog_3yr_2019';
 update #meta set field_name = 'Maths progress, 2017-2019' where column_name = 'matprog_3yr_2019';
-update #meta set field_name = 'Absence rate' where column_name = 'total_absence_2018';
-update #meta set field_name = 'Persistent absentee rate' where column_name = 'persistent_absence_2018';
+update #meta set field_name = 'Absence rate' where column_name = 'total_absence';
+update #meta set field_name = 'Persistent absentee rate' where column_name = 'persistent_absence';
 update #meta set field_name = 'Teachers' where column_name = 'total_teachers';
 update #meta set field_name = 'Teachers, FTE' where column_name = 'total_teachers_fte';
 update #meta set field_name = 'Assistant:teacher ratio' where column_name = 'assistant_teacher_ratio';
@@ -727,8 +727,8 @@ select
 	+readprog_3yr_2019+','
 	+writprog_3yr_2019+','
 	+matprog_3yr_2019+','
-	+total_absence_2018+','
-	+persistent_absence_2018+','
+	+total_absence+','
+	+persistent_absence+','
 	+total_teachers+','
 	+total_teachers_fte+','
 	+pupil_teacher_ratio+','
@@ -845,8 +845,8 @@ select
 	+readprog_3yr_2019+','
 	+writprog_3yr_2019+','
 	+matprog_3yr_2019+','
-	+total_absence_2018+','
-	+persistent_absence_2018+','
+	+total_absence+','
+	+persistent_absence+','
 	+total_teachers+','
 	+total_teachers_fte+','
 	+pupil_teacher_ratio+','
