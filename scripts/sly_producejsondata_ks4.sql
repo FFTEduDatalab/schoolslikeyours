@@ -134,9 +134,9 @@ select
 		when c.name='pct_teachers_leadership' then 'Percentage of all teachers on the leadership pay scale'
 		when c.name='mean_sick_days' then 'Mean number of teacher sick days (teachers taking sick leave)'
 		when c.name='pct_temp_posts' then 'Percentage of full-time posts filled with temporary staff'
-		when c.name='income_per_pupil_2018' then 'Total income per pupil, 2017/18'
-		when c.name='income_per_pupil_2017' then 'Total income per pupil, 2016/17'
-		when c.name='income_per_pupil_2016' then 'Total income per pupil, 2015/16'
+		when c.name='income_per_pupil_2019' then 'Total income per pupil, 2017/18'
+		when c.name='income_per_pupil_2018' then 'Total income per pupil, 2016/17'
+		when c.name='income_per_pupil_2017' then 'Total income per pupil, 2015/16'
 		when c.name='fixed_excl' then 'Fixed period exclusions per 100 pupils, 2017/18'
 		when c.name='perm_excl' then 'Permanent exclusions per 100 pupils, 2017/18'
 	end,
@@ -215,9 +215,9 @@ select
 		when c.name='pct_teachers_leadership' then 'Workforce'
 		when c.name='mean_sick_days' then 'Workforce'
 		when c.name='pct_temp_posts' then 'Workforce'
+		when c.name='income_per_pupil_2019' then 'Finance'
 		when c.name='income_per_pupil_2018' then 'Finance'
 		when c.name='income_per_pupil_2017' then 'Finance'
-		when c.name='income_per_pupil_2016' then 'Finance'
 		when c.name='fixed_excl' then 'Exclusions'
 		when c.name='perm_excl' then 'Exclusions'
 	end,
@@ -265,7 +265,7 @@ select
 		when c.name='ks2aps' then 1
 		when c.name='pct_fsm6' then 1
 		when c.name='pct_eal' then 1
-		when c.name='income_per_pupil_2018' then 1
+		when c.name='income_per_pupil_2019' then 1
 	end,
 	case		-- precision, default=2
 		when c.name='pupils' then 0
@@ -423,9 +423,9 @@ update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' 
 update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_teachers_leadership';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='mean_salary_teachers';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='mean_sick_days';
+update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2019';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2018';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2017';
-update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2016';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='fixed_excl';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='perm_excl';
 
@@ -507,9 +507,9 @@ update #meta set field_name = 'Leadership pay scale, %' where column_name = 'pct
 update #meta set field_name = 'Temporary staff, %' where column_name = 'pct_temp_posts';
 update #meta set field_name = 'Mean salary' where column_name = 'mean_salary_teachers';
 update #meta set field_name = 'Mean staff sick days' where column_name = 'mean_sick_days';
-update #meta set field_name = 'Income, 2018' where column_name = 'income_per_pupil_2018';
-update #meta set field_name = 'Income, 2017' where column_name = 'income_per_pupil_2017';
-update #meta set field_name = 'Income, 2016' where column_name = 'income_per_pupil_2016';
+update #meta set field_name = 'Income, 2018' where column_name = 'income_per_pupil_2019';
+update #meta set field_name = 'Income, 2017' where column_name = 'income_per_pupil_2018';
+update #meta set field_name = 'Income, 2016' where column_name = 'income_per_pupil_2017';
 update #meta set field_name = 'Fixed period exclusion rate, 2018' where column_name = 'fixed_excl';
 update #meta set field_name = 'Permanent exclusion rate, 2018' where column_name = 'perm_excl';
 
@@ -631,9 +631,9 @@ select
 	+pct_teachers_leadership+','
 	+mean_salary_teachers+','
 	+mean_sick_days+','
+	+income_per_pupil_2019+','
 	+income_per_pupil_2018+','
 	+income_per_pupil_2017+','
-	+income_per_pupil_2016+','
 	+fixed_excl+','
 	+perm_excl
 	-- +',""'
@@ -722,9 +722,9 @@ select
 	+pct_teachers_leadership+','
 	+mean_salary_teachers+','
 	+mean_sick_days+','
+	+income_per_pupil_2019+','
 	+income_per_pupil_2018+','
 	+income_per_pupil_2017+','
-	+income_per_pupil_2016+','
 	+fixed_excl+','
 	+perm_excl
 	-- +search_string

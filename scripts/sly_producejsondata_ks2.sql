@@ -150,9 +150,9 @@ select
 		when c.name='pct_teachers_leadership' then 'Percentage of all teachers on the leadership pay scale'
 		when c.name='mean_sick_days' then 'Mean number of teacher sick days (teachers taking sick leave)'
 		when c.name='pct_temp_posts' then 'Percentage of full-time posts filled with temporary staff'
-		when c.name='income_per_pupil_2018' then 'Total income per pupil, 2017/18'
-		when c.name='income_per_pupil_2017' then 'Total income per pupil, 2016/17'
-		when c.name='income_per_pupil_2016' then 'Total income per pupil, 2015/16'
+		when c.name='income_per_pupil_2019' then 'Total income per pupil, 2017/18'
+		when c.name='income_per_pupil_2018' then 'Total income per pupil, 2016/17'
+		when c.name='income_per_pupil_2017' then 'Total income per pupil, 2015/16'
 	end,
 	case		-- group
 		when c.name='la_code' then 'School characteristics'
@@ -246,9 +246,9 @@ select
 		when c.name='pct_teachers_leadership' then 'Workforce'
 		when c.name='mean_sick_days' then 'Workforce'
 		when c.name='pct_temp_posts' then 'Workforce'
+		when c.name='income_per_pupil_2019' then 'Finance'
 		when c.name='income_per_pupil_2018' then 'Finance'
 		when c.name='income_per_pupil_2017' then 'Finance'
-		when c.name='income_per_pupil_2016' then 'Finance'
 	end,
 	case		-- href
 		when c.name='establishmentname' then 'https://get-information-schools.service.gov.uk/Establishments/Establishment/Details/{URN}'
@@ -297,7 +297,7 @@ select
 		when c.name='tks1average' then 1
 		when c.name='pct_fsm6' then 1
 		when c.name='pct_eal' then 1
-		when c.name='income_per_pupil_2018' then 1
+		when c.name='income_per_pupil_2019' then 1
 	end,
 	case		-- precision
 		when c.name='pupils' then 0
@@ -478,9 +478,9 @@ update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' 
 update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_teachers_leadership';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='mean_salary_teachers';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='mean_sick_days';
-update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2016';
-update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2017';
+update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2019';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2018';
+update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupils"' where column_name='income_per_pupil_2017';
 
 
 -- Set column aliases, that show in the front-end
@@ -589,9 +589,9 @@ update #meta set field_name = 'Leadership pay scale, %' where column_name = 'pct
 update #meta set field_name = 'Temporary staff, %' where column_name = 'pct_temp_posts';
 update #meta set field_name = 'Mean salary' where column_name = 'mean_salary_teachers';
 update #meta set field_name = 'Mean staff sick days' where column_name = 'mean_sick_days';
-update #meta set field_name = 'Income, 2018' where column_name = 'income_per_pupil_2018';
-update #meta set field_name = 'Income, 2017' where column_name = 'income_per_pupil_2017';
-update #meta set field_name = 'Income, 2016' where column_name = 'income_per_pupil_2016';
+update #meta set field_name = 'Income, 2018' where column_name = 'income_per_pupil_2019';
+update #meta set field_name = 'Income, 2017' where column_name = 'income_per_pupil_2018';
+update #meta set field_name = 'Income, 2016' where column_name = 'income_per_pupil_2017';
 
 declare @max int = (select max(ndx) from #meta);
 
@@ -740,9 +740,9 @@ select
 	+pct_teachers_leadership+','
 	+mean_salary_teachers+','
 	+mean_sick_days+','
+	+income_per_pupil_2019+','
 	+income_per_pupil_2018+','
-	+income_per_pupil_2017+','
-	+income_per_pupil_2016
+	+income_per_pupil_2017
 	-- +',""'
 	+']'
 from
@@ -858,9 +858,9 @@ select
 	+pct_teachers_leadership+','
 	+mean_salary_teachers+','
 	+mean_sick_days+','
+	+income_per_pupil_2019+','
 	+income_per_pupil_2018+','
-	+income_per_pupil_2017+','
-	+income_per_pupil_2016
+	+income_per_pupil_2017
 	-- +search_string
 	+'],'
 from datalab.fos.ks2;

@@ -616,30 +616,6 @@ select
 		end
 	) i_totals_income_net
 into #mat_totals_y2
-from public_data.finance.academiesIE2016
-group by mat_number
-
-select
-	max(mat_number) mat_number,
-	sum(
-		case
-			when return_type='MAT' then number_pupils_fte
-			else null
-		end
-	) number_pupils_fte,
-	sum(
-		case
-			when return_type='MAT' then period_covered
-			else null
-		end
-	) period_covered,
-	sum(
-		case
-			when return_type='Central Services' then i_totals_income_net
-			else null
-		end
-	) i_totals_income_net
-into #mat_totals_y1
 from public_data.finance.academiesIE2017
 group by mat_number
 
@@ -663,83 +639,66 @@ select
 			else null
 		end
 	) i_totals_income_net
-into #mat_totals_y0
+into #mat_totals_y1
 from public_data.finance.academiesIE2018 a
 	inner join public_data.finance.academiesIE2018centralservices c on
 		a.[Company Number]=c.[Company Number]
 where
-	a.[MAT SAT or Central Services]='MAT'		-- need this additional condition in 2018, as SATs have company numbers
+	a.[MAT SAT or Central Services]='MAT'
+group by a.[Company Number]
+
+select
+	max(a.[Company number]) company_number,
+	sum(
+		case
+			when a.[MAT SAT or Central Services]='MAT' then a.[No Pupils]
+			else null
+		end
+	) number_pupils_fte,
+	sum(
+		case
+			when a.[MAT SAT or Central Services]='MAT' then a.[Period covered by return]
+			else null
+		end
+	) period_covered,
+	sum(
+		case
+			when c.[MAT SAT or Central Services]='Central Services' then c.[Total Income]-c.[Income from catering]-c.[Receipts from supply teacher insurance claims]
+			else null
+		end
+	) i_totals_income_net
+into #mat_totals_y0
+from public_data.finance.academiesIE2019 a
+	inner join public_data.finance.academiesIE2019centralservices c on
+		a.[Company Number]=c.[Company Number]
+where
+	a.[MAT SAT or Central Services]='MAT' and
+	a.[No Pupils] is not null		-- there are a small number of records where this is the case
 group by a.[Company Number]
 
 if object_id('tempdb.dbo.#finance_y2', 'u') is not null
 	drop table #finance_y2;
-
-select
-	isnull(new_laestab, laestab) laestab,
-	laestab orig_laestab,
-	income_per_pupil income_per_pupil_2016,
-	count(1) over (partition by isnull(new_laestab, laestab)) dups
-into #finance_y2
-from
-(
-	select
-		cast(la*10000+estab as int) laestab,
-		case
-			when t.number_pupils_fte is not null then cast(((a.i_totals_income_net/a.period_covered*12+isnull(t.i_totals_income_net*a.number_pupils_fte*a.period_covered*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.number_pupils_fte as real))*1000 as int)
-			else cast((a.i_totals_income_net/a.period_covered*12.0)*1000/cast(a.number_pupils_fte as real) as int)
-		end income_per_pupil
-	from finance.academiesIE2016 a
-		left join #mat_totals_y2 t on
-			t.mat_number=a.mat_number
-	where
-		isnull(a.number_pupils_fte,0)!=0 and
-		a.i_totals_income_net>0
-
-	union all
-
-	select
-		cast(school_dfe_number as int),
-		cast(cast(total_income_net as real)/cast(number_of_pupils_fte as real) as int)
-	from finance.cfrfull2016edited
-	where
-		isnumeric(number_of_pupils_fte)=1 and
-		isnull(cast(number_of_pupils_fte as real),0)!=0 and
-		total_income_net>0
-) q
-	left join public_data.organisation.predecessors p
-		on q.laestab=old_laestab
-where
-	q.income_per_pupil>10000 and
-	q.income_per_pupil<100000
-
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #finance_y2 t
-		on sch_id=t.orig_laestab
-where
-	not exists (select * from #finance_y2 c where c.laestab=sch_id)
-
 if object_id('tempdb.dbo.#finance_y1', 'u') is not null
 	drop table #finance_y1;
+if object_id('tempdb.dbo.#finance_y0', 'u') is not null
+	drop table #finance_y0;
 
--- NB: academies data doesn't need to be multiplied by 1000, unlike 2016 data
 select
 	isnull(new_laestab, laestab) laestab,
 	laestab orig_laestab,
 	income_per_pupil income_per_pupil_2017,
 	count(1) over (partition by isnull(new_laestab, laestab)) dups
-into #finance_y1
+into #finance_y2
 from
 (
 	select
-		cast(la*10000+estab as int) laestab,
+		concat(la,estab) laestab,
 		case
 			when t.number_pupils_fte is not null then cast(((a.i_totals_income_net/a.period_covered*12+isnull(t.i_totals_income_net*a.number_pupils_fte*a.period_covered*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.number_pupils_fte as real)) as int)
 			else cast((a.i_totals_income_net/a.period_covered*12.0)/cast(a.number_pupils_fte as real) as int)
 		end income_per_pupil
 	from finance.academiesIE2017 a
-		left join #mat_totals_y1 t on
+		left join #mat_totals_y2 t on
 			t.mat_number=a.mat_number
 	where
 		isnumeric(a.number_pupils_fte)=1 and
@@ -760,43 +719,39 @@ from
 	left join public_data.organisation.predecessors p
 		on q.laestab=old_laestab
 where
-	q.income_per_pupil>10000 and
-	q.income_per_pupil<100000
+	q.income_per_pupil>2000 and
+	q.income_per_pupil<19000
 
 update t
 set t.laestab=orig_laestab
 from #base b
-	inner join #finance_y1 t
+	inner join #finance_y2 t
 		on sch_id=t.orig_laestab
 where
-	not exists (select * from #finance_y1 c where c.laestab=sch_id)
+	not exists (select * from #finance_y2 c where c.laestab=b.sch_id)
 
-if object_id('tempdb.dbo.#finance_y0', 'u') is not null
-	drop table #finance_y0;
-
--- NB: academies data doesn't need to be multiplied by 1000, unlike 2016 data
 select
 	isnull(new_laestab, laestab) laestab,
 	laestab orig_laestab,
 	income_per_pupil income_per_pupil_2018,
 	count(1) over (partition by isnull(new_laestab, laestab)) dups
-into #finance_y0
+into #finance_y1
 from
 (
 	select
-		cast(la*10000+estab as int) laestab,
+		concat(la,estab) laestab,
 		case
 			when t.number_pupils_fte is not null then cast (((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12+isnull(t.i_totals_income_net*a.[No Pupils]*a.[Period covered by return]*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.[No Pupils] as real) as int)
 			else cast(((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12.0)/cast(a.[No Pupils] as real) as int)
 		end income_per_pupil
 	from finance.academiesIE2018 a
-		left join #mat_totals_y0 t on
+		left join #mat_totals_y1 t on
 			t.company_number=a.[Company number]
 	where
 		isnumeric(a.[No Pupils])=1 and
 		isnull(cast(a.[No Pupils] as real),0)!=0 and
 		a.[Total income]>0 and
-		a.[Period covered by return]>0		-- introduced, as several schools have period covered by return=0 in 2018
+		a.[Period covered by return]>0
 
 	union all
 
@@ -812,8 +767,56 @@ from
 	left join public_data.organisation.predecessors p
 		on q.laestab=old_laestab
 where
-	q.income_per_pupil>10000 and
-	q.income_per_pupil<100000
+	q.income_per_pupil>2000 and
+	q.income_per_pupil<19000
+
+update t
+set t.laestab=orig_laestab
+from #base b
+	inner join #finance_y1 t
+		on sch_id=t.orig_laestab
+where
+	not exists (select * from #finance_y1 c where c.laestab=b.sch_id)
+
+select
+	isnull(new_laestab, laestab) laestab,
+	laestab orig_laestab,
+	income_per_pupil income_per_pupil_2019,
+	count(1) over (partition by isnull(new_laestab, laestab)) dups
+into #finance_y0
+from
+(
+	select
+		concat(la,estab) laestab,
+		case
+			when t.number_pupils_fte is not null then cast (((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12+isnull(t.i_totals_income_net*a.[No Pupils]*a.[Period covered by return]*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.[No Pupils] as real) as int)
+			else cast(((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12.0)/cast(a.[No Pupils] as real) as int)
+		end income_per_pupil
+	from finance.academiesIE2019 a
+		left join #mat_totals_y0 t on
+			t.company_number=a.[Company number]
+	where
+		isnumeric(a.[No Pupils])=1 and
+		isnull(cast(a.[No Pupils] as real),0)!=0 and
+		a.[Total income]>0 and
+		a.[Period covered by return]>0
+
+	union all
+
+	select
+		laestab,
+		cast(cast(total_income_net as real)/cast([No Pupils] as real) as int)
+	from finance.cfrfull2019edited
+	where
+		isnumeric([No Pupils])=1 and
+		isnull(cast([No Pupils] as real),0)!=0 and
+		total_income_net>0
+) q
+	left join public_data.organisation.predecessors p
+		on q.laestab=old_laestab
+where
+	q.income_per_pupil>2000 and
+	q.income_per_pupil<19000
 
 update t
 set t.laestab=orig_laestab
@@ -821,7 +824,7 @@ from #base b
 	inner join #finance_y0 t
 		on sch_id=t.orig_laestab
 where
-	not exists (select * from #finance_y0 c where c.laestab=sch_id)
+	not exists (select * from #finance_y0 c where c.laestab=b.sch_id)
 
 
 -- Search strings
@@ -1014,9 +1017,9 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(w.pct_teachers_leadership),'""') pct_teachers_leadership,
 	isnull(datalab.fos.setNonNumericsToNull(w.mean_salary_teachers),'""') mean_salary_teachers,
 	isnull(datalab.fos.setNonNumericsToNull(w.mean_sick_days),'""') mean_sick_days,
-	isnull(datalab.fos.setNonNumericsToNull(f0.income_per_pupil_2018),'""') income_per_pupil_2018,
-	isnull(datalab.fos.setNonNumericsToNull(f1.income_per_pupil_2017),'""') income_per_pupil_2017,
-	isnull(datalab.fos.setNonNumericsToNull(f2.income_per_pupil_2016),'""') income_per_pupil_2016,
+	isnull(datalab.fos.setNonNumericsToNull(f0.income_per_pupil_2019),'""') income_per_pupil_2019,
+	isnull(datalab.fos.setNonNumericsToNull(f1.income_per_pupil_2018),'""') income_per_pupil_2018,
+	isnull(datalab.fos.setNonNumericsToNull(f2.income_per_pupil_2017),'""') income_per_pupil_2017,
 	isnull(datalab.fos.setNonNumericsToNull(e.fixed_excl),'""') fixed_excl,
 	isnull(datalab.fos.setNonNumericsToNull(e.perm_excl),'""') perm_excl
 	-- '"' + isnull(#search.string, '') + '"' search_string
