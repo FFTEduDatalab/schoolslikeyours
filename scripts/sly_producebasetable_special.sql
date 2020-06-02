@@ -101,7 +101,7 @@ select		-- XXX check against delivery
 into #ks2_y0
 from pt.ks2final2019edited f
 	left join public_data.organisation.predecessors p
-		on f.lea*10000+estab=old_laestab
+		on f.lea*10000+f.estab=p.old_laestab
 where
 	rectype in (2,5) and		-- NB: differs from KS2
 	telig>0
@@ -224,9 +224,9 @@ select
 	tavent_g_ptq_ee tavent_g,
 	count(1) over (partition by isnull(new_laestab,lea*10000+estab)) dups
 into #ks4_y0
-from pt.ks4revised2019edited f
+from pt.ks4final2019edited f
 	left join public_data.organisation.predecessors p
-		on f.lea*10000+estab=old_laestab
+		on f.lea*10000+f.estab=p.old_laestab
 where
 	rectype in (2,7) and		-- NB: differs from KS4
 	(nftype!='FESI' or nftype is null) and

@@ -98,9 +98,9 @@ select
 	ptrwm_exp_3yr ptrwm_exp_3yr_2019,
 	count(1) over (partition by isnull(new_laestab,lea*10000+estab)) dups
 into #ks2_y0
-from pt.ks2revised2019edited f
+from pt.ks2final2019edited f
 	left join public_data.organisation.predecessors p
-		on f.lea*10000+estab=old_laestab
+		on f.lea*10000+f.estab=p.old_laestab
 where
 	rectype in (1,5) and		-- NB: differs from special
 	telig>0

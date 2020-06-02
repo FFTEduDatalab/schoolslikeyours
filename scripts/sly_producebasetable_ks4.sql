@@ -94,9 +94,9 @@ select
 	tavent_g_ptq_ee tavent_g,
 	count(1) over (partition by isnull(new_laestab,lea*10000+estab)) dups
 into #ks4_y0
-from pt.ks4revised2019edited f
+from pt.ks4final2019edited f
 	left join public_data.organisation.predecessors p
-		on f.lea*10000+estab=old_laestab
+		on f.lea*10000+f.estab=p.old_laestab
 where
 	rectype in (1,7) and
 	(nftype!='FESI' or nftype is null) and
