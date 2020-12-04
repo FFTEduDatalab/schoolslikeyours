@@ -719,14 +719,14 @@ from
 	left join public_data.organisation.predecessors p
 		on q.laestab=old_laestab
 where
-	q.income_per_pupil>2000 and
-	q.income_per_pupil<19000
 
 update t
 set t.laestab=orig_laestab
 from #base b
 	inner join #finance_y2 t
 		on sch_id=t.orig_laestab
+	q.income_per_pupil>10000 and		-- NB: note difference between mainstream and special
+	q.income_per_pupil<100000
 where
 	not exists (select * from #finance_y2 c where c.laestab=b.sch_id)
 
@@ -767,8 +767,8 @@ from
 	left join public_data.organisation.predecessors p
 		on q.laestab=old_laestab
 where
-	q.income_per_pupil>2000 and
-	q.income_per_pupil<19000
+	q.income_per_pupil>10000 and		-- NB: note difference between mainstream and special
+	q.income_per_pupil<100000
 
 update t
 set t.laestab=orig_laestab
@@ -815,8 +815,8 @@ from
 	left join public_data.organisation.predecessors p
 		on q.laestab=old_laestab
 where
-	q.income_per_pupil>2000 and
-	q.income_per_pupil<19000
+	q.income_per_pupil>10000 and		-- NB: note difference between mainstream and special
+	q.income_per_pupil<100000
 
 update t
 set t.laestab=orig_laestab
