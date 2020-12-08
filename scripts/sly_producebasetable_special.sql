@@ -1,12 +1,9 @@
-use public_data
-go
-
 ---- GIAS
 if object_id('tempdb.dbo.#base', 'u') is not null
 	drop table #base;
 
 select
-	sch_id,
+	sch_id laestab,
 	la_code,
 	gor_code,
 	establishmentname,
@@ -28,7 +25,7 @@ select
 		when statutorylowage<11 and statutoryhighage>=14 then 3 -- all-through
 		else 1 -- primary
 	end phase,
-	case officialsixthform_code when 2 then 0 else officialsixthform_code end has_sixth_form,
+	case when officialsixthform_code!=1 then 0 else officialsixthform_code end has_sixth_form,		-- Not applicable/Does not have a sixth form/null
 	case
 		when left(urbanrural_code,1)='C' then 'C'
 		when left(urbanrural_code,1)='D' then 'D'
@@ -38,7 +35,7 @@ select
 	easting,
 	northing,
 	opendate,
-	case SEN1_name
+	case sen1_name
 		when 'ASD - Autistic Spectrum Disorder' then 1
 		when 'HI - Hearing Impairment' then 2
 		when 'MLD - Moderate Learning Difficulty' then 3
@@ -53,9 +50,9 @@ select
 		else 10 -- other/not recorded/not applicable
 	end specialism1
 into #base
-from organisation.gias
+from public_data.organisation.gias
 where
-	ac_year=2018 and
+	ac_year=2019 and
 	version=12 and
 	establishmentstatus_code in (1,3) and
 	statutorylowage<16 and
@@ -67,11 +64,11 @@ where
 if object_id('tempdb.dbo.#ks2_y0', 'u') is not null
 	drop table #ks2_y0;
 
-select		-- XXX check against delivery
+select
 	rectype,
-	lea*10000 + estab laestab,
+	lea*10000 + estab orig_laestab,
 	iclose,
-	isnull(new_laestab,lea*10000+estab) sch_id,
+	isnull(new_laestab,lea*10000+estab) laestab,
 	telig telig_2019,
 	tks1average,
 	tfsm6cla1a,
@@ -99,28 +96,36 @@ select		-- XXX check against delivery
 	ptrwm_exp_3yr ptrwm_exp_3yr_2019,
 	count(1) over (partition by isnull(new_laestab,lea*10000+estab)) dups
 into #ks2_y0
-from pt.ks2final2019edited f
+from public_data.pt.ks2final2019edited f
 	left join public_data.organisation.predecessors p
 		on f.lea*10000+f.estab=p.old_laestab
 where
 	rectype in (2,5) and		-- NB: differs from KS2
 	telig>0
 
-
--- sch_id reversion
-update t
-set t.sch_id=t.laestab
-from #base b
-	inner join #ks2_y0 t
-		on b.sch_id=t.laestab
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #ks2_y0 a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #ks2_y0 c where c.sch_id=b.sch_id)
-
+	not exists (select * from #ks2_y0 c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 --- Add schools to base which appear in y0 KS2 data
 insert #base
 select
-	sch_id,
+	laestab,
 	la_code,
 	gor_code,
 	establishmentname,
@@ -137,7 +142,7 @@ select
 from
 (
 select
-	g.sch_id,
+	g.sch_id laestab,
 	la_code,
 	gor_code,
 	establishmentname,
@@ -182,8 +187,8 @@ select
 	end specialism1,
 	row_number() over (partition by g.sch_id order by opendate desc) rowid
 from #ks2_y0 y
-	inner join organisation.gias g on
-		y.sch_id=g.sch_id and
+	inner join public_data.organisation.gias g on
+		y.laestab=g.sch_id and
 		ac_year=2018 and
 		version=12 and
 		statutorylowage<11 and
@@ -191,7 +196,7 @@ from #ks2_y0 y
 		typeofestablishment_code!='10'
 where
 	iclose=0 and
-	not exists (select * from #base b where b.sch_id=y.sch_id)
+	not exists (select * from #base b where b.laestab=y.laestab)
 ) q
 where rowid=1
 
@@ -202,11 +207,12 @@ if object_id('tempdb.dbo.#ks4_y0', 'u') is not null
 
 select
 	rectype,
-	lea*10000 + estab laestab,
+	lea*10000 + estab orig_laestab,
 	iclose,
-	isnull(new_laestab,lea*10000+estab) sch_id,
+	isnull(new_laestab,lea*10000+estab) laestab,
 	tpup,
 	ks2aps,
+	tfsm6cla1a,
 	ptfsm6cla1a,
 	ptealgrp2,
 	ptnmob,
@@ -224,7 +230,7 @@ select
 	tavent_g_ptq_ee tavent_g,
 	count(1) over (partition by isnull(new_laestab,lea*10000+estab)) dups
 into #ks4_y0
-from pt.ks4final2019edited f
+from public_data.pt.ks4final2019edited f
 	left join public_data.organisation.predecessors p
 		on f.lea*10000+f.estab=p.old_laestab
 where
@@ -232,19 +238,29 @@ where
 	(nftype!='FESI' or nftype is null) and
 	tpup>0
 
--- sch_id reversion
-update t
-set t.sch_id=t.laestab
-from #base b
-	inner join #ks4_y0 t
-		on b.sch_id=t.laestab
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #ks4_y0 a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #ks4_y0 c where c.sch_id=b.sch_id)
+	not exists (select * from #ks4_y0 c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 --- Add schools to base which appear in y0 KS4 data
 insert #base
 select
-	sch_id,
+	laestab,
 	la_code,
 	gor_code,
 	establishmentname,
@@ -261,7 +277,7 @@ select
 from
 (
 select
-	g.sch_id,
+	g.sch_id laestab,
 	la_code,
 	gor_code,
 	establishmentname,
@@ -306,8 +322,8 @@ select
 	end specialism1,
 	row_number() over (partition by g.sch_id order by opendate desc) rowid
 from #ks4_y0 y
-	inner join organisation.gias g on
-		y.sch_id=g.sch_id and
+	inner join public_data.organisation.gias g on
+		y.laestab=g.sch_id and
 		ac_year=2018 and
 		version=12 and
 		statutoryhighage>=16 and
@@ -315,7 +331,7 @@ from #ks4_y0 y
 		typeofestablishment_code!='10'
 where
 	iclose=0 and
-	not exists (select * from #base b where b.sch_id=y.sch_id)
+	not exists (select * from #base b where b.laestab=y.laestab)
 )_
 where rowid=1
 
@@ -327,74 +343,80 @@ if object_id('tempdb.dbo.#context', 'u') is not null
 select
 	isnull(new_laestab,laestab) laestab,
 	laestab orig_laestab,
-    pct_of_pupils_known_to_be_eligible_for_and_claiming_free_school_meals pct_fsm,
+    [% of pupils known to be eligible for free school meals] pct_fsm,
 	e.pnumfsmever pct_fsm6,		-- this is a big misnomer in the p.t. census file!
-	round(100*cast(number_of_pupils_whose_first_language_is_known_or_believed_to_be_other_than_english as real)/nullif(headcount_of_pupils,0),1) pct_eal,
-	nullif(headcount_of_pupils,0) pupils,
-	cast(full_time_boys_aged_5 as int)+cast(full_time_boys_aged_6 as int)+cast(full_time_boys_aged_7 as int)+		-- NB: this differs from KS4 code
-	cast(full_time_boys_aged_8 as int)+cast(full_time_boys_aged_9 as int)+cast(full_time_girls_aged_5 as int)+
-	cast(full_time_girls_aged_6 as int)+cast(full_time_girls_aged_7 as int)+
-	cast(full_time_girls_aged_8 as int)+cast(full_time_girls_aged_9 as int)+
-	cast(full_time_boys_aged_10 as int)+cast(full_time_girls_aged_10 as int)+
-	cast(full_time_boys_aged_11 as int)+cast(full_time_boys_aged_12 as int)+cast(full_time_boys_aged_13 as int)+
-	cast(full_time_boys_aged_14 as int)+cast(full_time_boys_aged_15 as int)+cast(full_time_girls_aged_11 as int)+
-	cast(full_time_girls_aged_12 as int)+cast(full_time_girls_aged_13 as int)+
-	cast(full_time_girls_aged_14 as int)+cast(full_time_girls_aged_15 as int) as comp_pupils,
-	case when cast(full_time_boys_aged_5 as int)>=2 or cast(full_time_girls_aged_5 as int)>=2 then 1 else 0 end +
-	case when cast(full_time_boys_aged_6 as int)>=2 or cast(full_time_girls_aged_6 as int)>=2 then 1 else 0 end +
-	case when cast(full_time_boys_aged_7 as int)>=2 or cast(full_time_girls_aged_7 as int)>=2 then 1 else 0 end +
-	case when cast(full_time_boys_aged_8 as int)>=2 or cast(full_time_girls_aged_8 as int)>=2 then 1 else 0 end +
-	case when cast(full_time_boys_aged_9 as int)>=2 or cast(full_time_girls_aged_9 as int)>=2 then 1 else 0 end +
-	case when cast(full_time_boys_aged_10 as int)>=2 or cast(full_time_girls_aged_10 as int)>=2 then 1 else 0 end +
-	case when cast(full_time_boys_aged_11 as int)>=5 or cast(full_time_girls_aged_11 as int)>=5 then 1 else 0 end +
-	case when cast(full_time_boys_aged_12 as int)>=5 or cast(full_time_girls_aged_12 as int)>=5 then 1 else 0 end +
-	case when cast(full_time_boys_aged_13 as int)>=5 or cast(full_time_girls_aged_13 as int)>=5 then 1 else 0 end +
-	case when cast(full_time_boys_aged_14 as int)>=5 or cast(full_time_girls_aged_14 as int)>=5 then 1 else 0 end +
-	case when cast(full_time_boys_aged_15 as int)>=5 or cast(full_time_girls_aged_15 as int)>=5 then 1 else 0 end as comp_cohorts,
-	round(100*(cast(number_of_pupils_classified_as_white_british_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_irish_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_traveller_of_irish_heritage_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_any_other_white_background_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_gypsy_roma_ethnic_origin as real))
-	/nullif(headcount_of_pupils,0),1) pct_white,
-	round(100*(cast(number_of_pupils_classified_as_white_and_black_caribbean_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_white_and_black_african_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_white_and_asian_ethnic_origin as real) +
-	cast(number_of_pupils_classified_as_any_other_mixed_background_ethnic_origin as real))
-	/nullif(headcount_of_pupils,0),1) pct_mixed,
-	round(100*(cast(number_of_pupils_classified_as_indian_ethnic_origin as real)+
-	cast(number_of_pupils_classified_as_pakistani_ethnic_origin as real)+
-	cast(number_of_pupils_classified_as_bangladeshi_ethnic_origin as real)+
-	cast(number_of_pupils_classified_as_any_other_asian_background_ethnic_origin as real))
-	/nullif(headcount_of_pupils,0),1) pct_asian,
-	round(100*(cast(number_of_pupils_classified_as_black_caribbean_ethnic_origin as real)+
-	cast(number_of_pupils_classified_as_black_african_ethnic_origin as real)+
-	cast(number_of_pupils_classified_as_any_other_black_background_ethnic_origin as real))
-	/nullif(headcount_of_pupils,0),1) pct_black,
-	round(100*cast(number_of_pupils_classified_as_chinese_ethnic_origin as real)/nullif(headcount_of_pupils,0),1) pct_chinese,
-	round(100*(cast(number_of_pupils_classified_as_any_other_ethnic_group_ethnic_origin as real) +
-	cast(number_of_pupils_unclassified as real))
-	/nullif(headcount_of_pupils,0),1) pct_otherunclassified,
+	round(100*cast([number of pupils whose first language is known or believed to be other than english] as real)/nullif([headcount of pupils],0),1) pct_eal,
+	nullif([headcount of pupils],0) pupils,
+	cast([full time boys aged 5] as int)+cast([full time boys aged 6] as int)+cast([full time boys aged 7] as int)+		-- NB: this differs from KS2 and KS4 code
+	cast([full time boys aged 8] as int)+cast([full time boys aged 9] as int)+cast([full-time girls aged 5] as int)+
+	cast([full-time girls aged 6] as int)+cast([full-time girls aged 7] as int)+
+	cast([full-time girls aged 8] as int)+cast([full-time girls aged 9] as int)+
+	cast([full time boys aged 10] as int)+cast([full-time girls aged 10] as int)+
+	cast([full time boys aged 11] as int)+cast([full time boys aged 12] as int)+cast([full time boys aged 13] as int)+
+	cast([full time boys aged 14] as int)+cast([full time boys aged 15] as int)+cast([full-time girls aged 11] as int)+
+	cast([full-time girls aged 12] as int)+cast([full-time girls aged 13] as int)+
+	cast([full-time girls aged 14] as int)+cast([full-time girls aged 15] as int) as comp_pupils,
+	case when cast([full time boys aged 5] as int)>=2 or cast([full-time girls aged 5] as int)>=2 then 1 else 0 end +
+	case when cast([full time boys aged 6] as int)>=2 or cast([full-time girls aged 6] as int)>=2 then 1 else 0 end +
+	case when cast([full time boys aged 7] as int)>=2 or cast([full-time girls aged 7] as int)>=2 then 1 else 0 end +
+	case when cast([full time boys aged 8] as int)>=2 or cast([full-time girls aged 8] as int)>=2 then 1 else 0 end +
+	case when cast([full time boys aged 9] as int)>=2 or cast([full-time girls aged 9] as int)>=2 then 1 else 0 end +
+	case when cast([full time boys aged 10] as int)>=2 or cast([full-time girls aged 10] as int)>=2 then 1 else 0 end +
+	case when cast([full time boys aged 11] as int)>=5 or cast([full-time girls aged 11] as int)>=5 then 1 else 0 end +
+	case when cast([full time boys aged 12] as int)>=5 or cast([full-time girls aged 12] as int)>=5 then 1 else 0 end +
+	case when cast([full time boys aged 13] as int)>=5 or cast([full-time girls aged 13] as int)>=5 then 1 else 0 end +
+	case when cast([full time boys aged 14] as int)>=5 or cast([full-time girls aged 14] as int)>=5 then 1 else 0 end +
+	case when cast([full time boys aged 15] as int)>=5 or cast([full-time girls aged 15] as int)>=5 then 1 else 0 end as comp_cohorts,
+	round(100*(cast([number of pupils classified as white british ethnic origin] as real) +
+	cast([number of pupils classified as irish ethnic origin] as real) +
+	cast([number of pupils classified as traveller of irish heritage ethnic origin] as real) +
+	cast([number of pupils classified as any other white background ethnic origin] as real) +
+	cast([number of pupils classified as gypsy roma ethnic origin] as real))
+	/nullif([headcount of pupils],0),1) pct_white,
+	round(100*(cast([number of pupils classified as white and black caribbean ethnic origin] as real) +
+	cast([number of pupils classified as white and black african ethnic origin] as real) +
+	cast([number of pupils classified as white and asian ethnic origin] as real) +
+	cast([number of pupils classified as any other mixed background ethnic origin] as real))
+	/nullif([headcount of pupils],0),1) pct_mixed,
+	round(100*(cast([number of pupils classified as indian ethnic origin] as real)+
+	cast([number of pupils classified as pakistani ethnic origin] as real)+
+	cast([number of pupils classified as bangladeshi ethnic origin] as real)+
+	cast([number of pupils classified as any other asian background ethnic origin] as real))
+	/nullif([headcount of pupils],0),1) pct_asian,
+	round(100*(cast([number of pupils classified as caribbean ethnic origin] as real)+
+	cast([number of pupils classified as african ethnic origin] as real)+
+	cast([number of pupils classified as any other black background ethnic origin] as real))
+	/nullif([headcount of pupils],0),1) pct_black,
+	round(100*cast([number of pupils classified as chinese ethnic origin] as real)/nullif([headcount of pupils],0),1) pct_chinese,
+	round(100*(cast([number of pupils classified as any other ethnic group ethnic origin] as real) +
+	cast([number of pupils unclassified] as real))
+	/nullif([headcount of pupils],0),1) pct_otherunclassified,
 	count(1) over (partition by isnull(new_laestab,laestab)) dups
 into #context
-from public_data.spc.udschoolspupils2019edited c
+from public_data.spc.udschoolspupils2020 c
 	left join public_data.organisation.predecessors p on
 		c.laestab=p.old_laestab
-	left join public_data.pt.census2019 e on
+	left join public_data.pt.census2019 e on		-- NB: this is the latest data available
 		c.laestab=concat(e.la,e.estab)
+
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #context a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	c.geographic_level='school'
-
-
---- In context data, set laestab back to orig_laestab where laestab is unmatched to GIAS
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #context t
-		on sch_id=t.orig_laestab
-where
-	not exists (select * from #context c where c.laestab=sch_id)
-
+	not exists (select * from #context c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 -- Update fsmever for schools which changed laestab
 update c
@@ -402,11 +424,11 @@ set pct_fsm6=pnumfsmever
 from #context c
 	left join public_data.organisation.predecessors p
 		on c.laestab=p.new_laestab
-	left join pt.census2019 s				-- XXX needs updating to 2019 when available
+	left join public_data.pt.census2019 s
 		on old_laestab=s.la*10000+estab
 where
 	pct_fsm6 is null and
-	exists (select * from #base b where sch_id=laestab)
+	exists (select * from #base b where b.laestab=c.laestab)
 
 
 --- Ofsted rating at end of year
@@ -414,111 +436,134 @@ if object_id('tempdb.dbo.#ofsted', 'u') is not null
 	drop table #ofsted;
 
 select
-	isnull(cast(new_laestab as real), cast(laestab as real)) laestab,
-	inspectionenddate,
-	overall latest_ofsted,
-	laestab orig_laestab,
-	year,
-	row_number() over (partition by isnull(cast(new_laestab as real), cast(laestab as real)) order by year desc, inspectionenddate desc) inspid		-- used to pick up the latest inspection
+	o.laestab orig_laestab,
+	isnull(cast(p.new_laestab as real),cast(o.laestab as real)) laestab,
+	o.inspection_date,
+	o.overall_effectiveness latest_ofsted,
+	count(1) over (partition by isnull(p.new_laestab,o.laestab)) dups
 into #ofsted
-from
-(
-select
-	*,
-	row_number() over (partition by laestab, year order by inspectionenddate desc) rowid		-- used to pick up the latest inspection in any given year
-from
-(
-select distinct
-	laestab,
-	[inspection_date] inspectionenddate,
-	[overall_effectiveness] overall,
-	year(inspection_date) + case when month(inspection_date)>=9 then 1 else 0 end year		-- 201708 -> 2017, 201709 -> 2018
-from public_data.ofsted.MIcompiled
+from public_data.ofsted.MIcompiled o
+	left join public_data.organisation.predecessors p on
+		o.laestab=p.old_laestab
 where
-	[overall_effectiveness] is not null
-) q
-where
-	year<=2019
-) y
-left join public_data.organisation.predecessors h
-	on y.laestab=h.old_laestab
-where
-	rowid=1
+	o.source_table='MI202008' and
+	o.overall_effectiveness is not null
 
---- sch_id reversion
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #ofsted t
-		on sch_id=t.orig_laestab
+--- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #ofsted a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #ofsted c where c.laestab=sch_id)
+	not exists (select * from #ofsted c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
+
 
 --- Workforce
+if object_id('tempdb.dbo.#teachers', 'u') is not null
+	drop table #teachers;
 if object_id('tempdb.dbo.#swf', 'u') is not null
 	drop table #swf;
 
 select
-	isnull(cast(new_laestab as real), concat([la number],[establishment number])) laestab,
-	concat([la number],[establishment number]) orig_laestab,
-	case
-		when isnumeric([Total Number of Teachers (Headcount)])=1 then [Total Number of Teachers (Headcount)]
+	t.school_laestab laestab,
+	sum(case
+		when t.characteristic_group='Total' then cast(nullif(t.headcount,'c') as int)
 		else null
-	end total_teachers,
-	case
-		when isnumeric([Total Number of Teachers (full-time Equivalent)])=1 then [Total Number of Teachers (full-time Equivalent)]
+	end) total_teachers,
+	sum(case
+		when t.characteristic_group='Total' then cast(nullif(t.full_time_equivalent,'c') as decimal(5,2))
 		else null
-	end total_teachers_fte,
-	case
-		when isnumeric([Ratio of Teaching Assistants to All Teachers])=1 then [Ratio of Teaching Assistants to All Teachers]
+	end) total_teachers_fte,
+	sum(case
+		when t.characteristic_group='QTS status' and t.characteristic='Qualified' then cast(nullif(t.full_time_equivalent,'c') as decimal(5,2))
 		else null
-	end assistant_teacher_ratio,
-	case
-		when isnumeric([Pupil:     Teacher Ratio])=1 then [Pupil:     Teacher Ratio]
+	end) total_qualified_teachers_fte,
+	sum(case
+		when t.characteristic_group='age group' and t.characteristic in ('50 to 59','60 and over') then cast(nullif(t.full_time_equivalent,'c') as decimal(5,2))
 		else null
-	end pupil_teacher_ratio,
-	case
-		when isnumeric([Teachers Aged 50 or over (%)])=1 then [Teachers Aged 50 or over (%)]/100.0 			-- needs to be in range 0-1 for funnel plots to work
-		else null
-	end pct_teachers_50,
-	case
-		when isnumeric([Teachers with Qualified Teacher Status (%)])=1 then [Teachers with Qualified Teacher Status (%)]/100.0
-		else null
-	end pct_teachers_qts,
-	case
-		when isnumeric([Mean Gross Salary of All Teachers (£)])=1 then [Mean Gross Salary of All Teachers (£)]
-		else null
-	end mean_salary_teachers,
-	case
-		when isnumeric([All Classroom Teachers on Main Pay Range (%)])=1 then [All Classroom Teachers on Main Pay Range (%)]/100.0
-		else null
-	end pct_teachers_main,
-	case
-		when isnumeric([All Teachers on the Leadership Pay Range (%)])=1 then [All Teachers on the Leadership Pay Range (%)]/100.0
-		else null
-	end pct_teachers_leadership,
-	case
-		when isnumeric([Average Number of Days Lost to Teacher Sickness Absence (All Tea])=1 then [Average Number of Days Lost to Teacher Sickness Absence (All Tea]
-		else null
-	end mean_sick_days,
-	case
-		when isnumeric([Full-Time Temporarily Filled Posts - Demoninator is an addition])=1 then [Full-Time Temporarily Filled Posts - Demoninator is an addition]/100.0
-		else null
-	end pct_temp_posts,
-	count(1) over (partition by isnull(cast(new_laestab as real), concat([la number],[establishment number]))) dups
-into #swf
-from public_data.sw.schools201811 s
-	left join public_data.organisation.predecessors p on
-		concat(s.[la number],s.[establishment number])=old_laestab
-
---- sch_id reversion
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #swf t
-		on sch_id=t.orig_laestab
+	end) total_teachers_50plus_fte
+into #teachers
+from public_data.sw.teachers_characteristics_school2019 t
 where
-	not exists (select * from #swf c where c.laestab=sch_id)
+	t.time_period=201920
+group by
+	t.school_laestab
+
+select
+	isnull(cast(p.new_laestab as real), q.laestab) laestab,
+	q.laestab orig_laestab,
+	q.total_teachers,
+	q.total_teachers_fte,
+	q.pupil_teacher_ratio,
+	cast(q.total_teaching_assistants_fte/q.total_teachers_fte as decimal(3,1)) assistant_teacher_ratio,
+	cast(q.total_qualified_teachers_fte*1.0/q.total_teachers_fte as decimal(4,3)) pct_teachers_qts,
+	cast(q.total_teachers_50plus_fte*1.0/q.total_teachers_fte as decimal(4,3)) pct_teachers_50,
+	q.mean_salary_teachers,
+	q.pct_teachers_leadership,
+	q.mean_sick_days,
+	q.pct_temp_posts,
+	count(1) over (partition by isnull(p.new_laestab, q.laestab)) dups
+into #swf
+from
+(select
+	t.*,
+	cast(nullif(a.full_time_equivalent,'c') as decimal(5,2)	) total_teaching_assistants_fte,
+	cast(nullif(nullif(r.pupil_to_qual_unqual_teacher_ratio,'u'),':') as decimal(3,1)) pupil_teacher_ratio,
+	cast(nullif(nullif(p.average_mean,'c'),':') as decimal(7,1)) mean_salary_teachers,
+	cast(nullif(nullif(p.teachers_on_leadership_pay_range_percent,'c'),':')/100.0 as decimal(4,3)) pct_teachers_leadership,
+	cast(nullif(nullif(s.averagenumberdaystaken,'c'),':') as decimal(3,1)) mean_sick_days,
+	cast(nullif(v.temprate,':')/100.0 as decimal(4,3)) pct_temp_posts
+from #teachers t
+	left join public_data.sw.support_staff_characteristics_school2019 a on
+		t.laestab=a.school_laestab and
+		a.time_period=201920 and
+		a.characteristic_group='post' and
+		a.characteristic='teaching assistants'
+	left join public_data.sw.pupil_teacher_ratio_2019 r on
+		t.laestab=r.school_laestab and
+		r.time_period=201920
+	left join public_data.sw.teacher_pay_school2019 p on
+		t.laestab=p.school_laestab and
+		p.time_period=201920
+	left join public_data.sw.teacher_sickness_absence_2019 s on
+		t.laestab=s.laestab and
+		s.time_period=201819		-- NB: sic - this is the latest year which the Nov 2019 school workforce survey collected
+	left join public_data.sw.vacancies_2019 v on
+		t.laestab=v.laestab and
+		v.time_period=2019
+) q
+	left join public_data.organisation.predecessors p on
+		q.laestab=p.old_laestab
+
+--- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #swf a
+	inner join #base b on
+		a.orig_laestab=b.laestab
+where
+	not exists (select * from #swf c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 
 -- Absence
@@ -548,13 +593,24 @@ where
 	geographic_level in ('national','school') and
 	time_period='201819'
 
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #absence t
-		on sch_id=t.orig_laestab
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #absence a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #absence c where c.laestab=sch_id)
+	not exists (select * from #absence c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 
 -- Exclusions
@@ -562,7 +618,7 @@ if object_id('tempdb.dbo.#exclusions', 'u') is not null
 	drop table #exclusions;
 
 select
-	level,
+	geographic_level,
 	school_type,
 	isnull(cast(p.new_laestab as real), a.laestab) laestab,
 	a.laestab orig_laestab,
@@ -571,23 +627,35 @@ select
 	perm_excl_rate perm_excl,
 	count(1) over (partition by isnull(cast(p.new_laestab as real), a.laestab)) dups		-- used to exclude schools that appear in source data more than once, on the grounds that there has e.g. been a merger, and using either individual record wouldn't be accurate
 into #exclusions
-from public_data.sfr.exclusions2018 a
+from public_data.sfr.exclusions2019 a
 	left join public_data.organisation.predecessors p
 		on a.laestab=p.old_laestab
 where
-	level in ('national','school') and
-	year='201718'
+	a.geographic_level in ('national','school') and
+	a.time_period='201819'
 
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #exclusions t
-		on sch_id=t.orig_laestab
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #exclusions a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #exclusions c where c.laestab=sch_id)
+	not exists (select * from #exclusions c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 
 -- Finance
+-- NB: Note difference in min/max thresholds applied between mainstream and special
 if object_id('tempdb.dbo.#mat_totals_y2', 'u') is not null
 	drop table #mat_totals_y2;
 if object_id('tempdb.dbo.#mat_totals_y1', 'u') is not null
@@ -697,7 +765,7 @@ from
 			when t.number_pupils_fte is not null then cast(((a.i_totals_income_net/a.period_covered*12+isnull(t.i_totals_income_net*a.number_pupils_fte*a.period_covered*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.number_pupils_fte as real)) as int)
 			else cast((a.i_totals_income_net/a.period_covered*12.0)/cast(a.number_pupils_fte as real) as int)
 		end income_per_pupil
-	from finance.academiesIE2017 a
+	from public_data.finance.academiesIE2017 a
 		left join #mat_totals_y2 t on
 			t.mat_number=a.mat_number
 	where
@@ -710,7 +778,7 @@ from
 	select
 		cast(school_dfe_number as int),
 		cast(cast(total_income_net as real)/cast(number_of_pupils_fte as real) as int)
-	from finance.cfrfull2017edited
+	from public_data.finance.cfrfull2017edited
 	where
 		isnumeric(number_of_pupils_fte)=1 and
 		isnull(cast(number_of_pupils_fte as real),0)!=0 and
@@ -719,16 +787,27 @@ from
 	left join public_data.organisation.predecessors p
 		on q.laestab=old_laestab
 where
-
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #finance_y2 t
-		on sch_id=t.orig_laestab
 	q.income_per_pupil>10000 and		-- NB: note difference between mainstream and special
 	q.income_per_pupil<100000
+
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #finance_y2 a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #finance_y2 c where c.laestab=b.sch_id)
+	not exists (select * from #finance_y2 c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 select
 	isnull(new_laestab, laestab) laestab,
@@ -744,7 +823,7 @@ from
 			when t.number_pupils_fte is not null then cast (((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12+isnull(t.i_totals_income_net*a.[No Pupils]*a.[Period covered by return]*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.[No Pupils] as real) as int)
 			else cast(((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12.0)/cast(a.[No Pupils] as real) as int)
 		end income_per_pupil
-	from finance.academiesIE2018 a
+	from public_data.finance.academiesIE2018 a
 		left join #mat_totals_y1 t on
 			t.company_number=a.[Company number]
 	where
@@ -758,7 +837,7 @@ from
 	select
 		cast([School DfE number] as int),
 		cast(cast(total_income_net as real)/cast([Number of Pupils (FTE)] as real) as int)
-	from finance.cfrfull2018edited
+	from public_data.finance.cfrfull2018edited
 	where
 		isnumeric([Number of Pupils (FTE)])=1 and
 		isnull(cast([Number of Pupils (FTE)] as real),0)!=0 and
@@ -770,13 +849,24 @@ where
 	q.income_per_pupil>10000 and		-- NB: note difference between mainstream and special
 	q.income_per_pupil<100000
 
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #finance_y1 t
-		on sch_id=t.orig_laestab
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #finance_y1 a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #finance_y1 c where c.laestab=b.sch_id)
+	not exists (select * from #finance_y1 c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 select
 	isnull(new_laestab, laestab) laestab,
@@ -792,7 +882,7 @@ from
 			when t.number_pupils_fte is not null then cast (((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12+isnull(t.i_totals_income_net*a.[No Pupils]*a.[Period covered by return]*1.0/(t.number_pupils_fte*t.period_covered),0))/cast(a.[No Pupils] as real) as int)
 			else cast(((a.[Total income]-a.[Income from catering]-a.[Receipts from supply teacher insurance claims])/a.[Period covered by return]*12.0)/cast(a.[No Pupils] as real) as int)
 		end income_per_pupil
-	from finance.academiesIE2019 a
+	from public_data.finance.academiesIE2019 a
 		left join #mat_totals_y0 t on
 			t.company_number=a.[Company number]
 	where
@@ -806,7 +896,7 @@ from
 	select
 		laestab,
 		cast(cast(total_income_net as real)/cast([No Pupils] as real) as int)
-	from finance.cfrfull2019edited
+	from public_data.finance.cfrfull2019edited
 	where
 		isnumeric([No Pupils])=1 and
 		isnull(cast([No Pupils] as real),0)!=0 and
@@ -818,13 +908,24 @@ where
 	q.income_per_pupil>10000 and		-- NB: note difference between mainstream and special
 	q.income_per_pupil<100000
 
-update t
-set t.laestab=orig_laestab
-from #base b
-	inner join #finance_y0 t
-		on sch_id=t.orig_laestab
+-- laestab reversion
+-- This formulation is required to handle the small number of cases where there is a one-to-many predecessor-successor relationship, and neither successor features in #base. In those instances, not updating dups results in us having two records with dups=1 but the same laestab
+;with a as
+(select
+	a.laestab,
+	a.orig_laestab,
+	a.dups,
+	row_number() over (partition by a.orig_laestab order by a.orig_laestab) rn		-- order is arbitrary, given we're talking about duplicates
+from #finance_y0 a
+	inner join #base b on
+		a.orig_laestab=b.laestab
 where
-	not exists (select * from #finance_y0 c where c.laestab=b.sch_id)
+	not exists (select * from #finance_y0 c where c.laestab=b.laestab)
+)
+update a
+set
+	a.laestab=a.orig_laestab,
+	a.dups=a.rn
 
 
 -- Search strings
@@ -835,7 +936,7 @@ where
 -- 	b.urn,
 -- 	' '+upper(cast(n.establishmentname as varchar(max))
 -- 	+' '+cast(la.name as varchar(max))
--- 	+' '+cast(b.sch_id as varchar(max))
+-- 	+' '+cast(b.laestab as varchar(max))
 -- 	+' '+cast(b.urn as varchar(max))
 -- 	+' ') string
 -- into
@@ -946,7 +1047,7 @@ select
 			else 0
 		end
 	as varchar(max)) inResults,
-	isnull(cast(b.sch_id as varchar(max)),'""') sch_id,
+	isnull(cast(b.laestab as varchar(max)),'""') laestab,
 	isnull(cast(b.urn as varchar(max)),'""') urn,
 	isnull('"' + datalab.fos.setNonNumericsToNull(s.establishmentname)+'"','""') establishmentname,
 	isnull(cast(b.la_code as varchar(max)),'""') la_code,
@@ -975,6 +1076,7 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(ks2.readpups_2019),'""') readpups_2019, 	--- will be hidden (required for funnel plot)
 	isnull(datalab.fos.setNonNumericsToNull(ks2.writpups_2019),'""') writpups_2019, 	--- will be hidden (required for funnel plot)
 	isnull(datalab.fos.setNonNumericsToNull(ks2.matpups_2019),'""') matpups_2019, 	--- will be hidden (required for funnel plot)
+	isnull(datalab.fos.setNonNumericsToNull(ks2.tfsm6cla1a),'""') tfsm6cla1a_ks2,
 	isnull(datalab.fos.setNonNumericsToNull(ks2.ptfsm6cla1a),'""') ptfsm6cla1a_ks2,
 	isnull(datalab.fos.setNonNumericsToNull(ks2.ptealgrp2),'""') ptealgrp2_ks2,
 	isnull(datalab.fos.setNonNumericsToNull(ks2.ptnmob),'""') ptnmob_ks2,
@@ -989,6 +1091,7 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(ks2.ptgps_exp_2019),'""') ptgps_exp_2019,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.tpup),'""') tpup_2019,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.p8pup),'""') p8pup_2019,
+	isnull(datalab.fos.setNonNumericsToNull(ks4.tfsm6cla1a),'""') tfsm6cla1a_ks4,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.ptfsm6cla1a),'""') ptfsm6cla1a_ks4,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.ptealgrp2),'""') ptealgrp2_ks4,
 	isnull(datalab.fos.setNonNumericsToNull(ks4.ptnmob),'""') ptnmob_ks4,
@@ -1013,7 +1116,6 @@ select
 	isnull(datalab.fos.setNonNumericsToNull(w.pct_teachers_qts),'""') pct_teachers_qts,
 	isnull(datalab.fos.setNonNumericsToNull(w.pct_teachers_50),'""') pct_teachers_50,
 	isnull(datalab.fos.setNonNumericsToNull(w.pct_temp_posts),'""') pct_temp_posts,
-	isnull(datalab.fos.setNonNumericsToNull(w.pct_teachers_main),'""') pct_teachers_main,
 	isnull(datalab.fos.setNonNumericsToNull(w.pct_teachers_leadership),'""') pct_teachers_leadership,
 	isnull(datalab.fos.setNonNumericsToNull(w.mean_salary_teachers),'""') mean_salary_teachers,
 	isnull(datalab.fos.setNonNumericsToNull(w.mean_sick_days),'""') mean_sick_days,
@@ -1025,32 +1127,30 @@ select
 	-- '"' + isnull(#search.string, '') + '"' search_string
 into datalab.fos.special
 from #base b
-	inner join datalab.fos.schoolnames20190801 s on
+	inner join datalab.fos.schoolnames20200801 s on
 		b.urn=s.urn
 	inner join #context c on
-		b.sch_id=c.laestab and c.dups=1
+		b.laestab=c.laestab and c.dups=1
 	left join #ofsted o on
-		b.sch_id=o.laestab and o.inspid=1
+		b.laestab=o.laestab and o.dups=1
 	left join #ks2_y0 ks2 on
-		b.sch_id=ks2.sch_id and ks2.dups=1
+		b.laestab=ks2.laestab and ks2.dups=1
 	left join #ks4_y0 ks4 on
-		b.sch_id=ks4.sch_id and ks4.dups=1
+		b.laestab=ks4.laestab and ks4.dups=1
 	left join #swf w on
-		b.sch_id=w.laestab and w.dups=1
+		b.laestab=w.laestab and w.dups=1
 	left join #absence a on
-		b.sch_id=a.laestab and a.dups=1
-	left join #exclusions e
-		on b.sch_id=e.laestab and e.dups=1
+		b.laestab=a.laestab and a.dups=1
+	left join #exclusions e on
+		b.laestab=e.laestab and e.dups=1
 	left join #finance_y0 f0 on
-		b.sch_id=f0.laestab and f0.dups=1
+		b.laestab=f0.laestab and f0.dups=1
 	left join #finance_y1 f1 on
-		b.sch_id=f1.laestab and f1.dups=1
+		b.laestab=f1.laestab and f1.dups=1
 	left join #finance_y2 f2 on
-		b.sch_id=f2.laestab and f2.dups=1
+		b.laestab=f2.laestab and f2.dups=1
 	left join datalab.organisation.schoolxy_gias xy on
-		b.sch_id=xy.point_id
-	--left join #temp temp
-	--	on b.sch_id=temp.sch_id and temp.dups=1
+		b.laestab=xy.point_id
 	-- left join #search on
 	-- 	b.urn=#search.urn
 

@@ -42,7 +42,7 @@ select
 	c.name,		-- field_name
 	case		-- type
 		when c.name='inResults' then 'raw'
-		when c.name in ('sch_id', 'urn') then 'id'
+		when c.name in ('laestab', 'urn') then 'id'
 		when c.name in ('establishmentname') then 'name'
 		when c.name like '%_code' then 'lookup'
 		when c.name = 'schtype' then 'lookup'
@@ -75,7 +75,7 @@ select
 		when c.name='coastal' then 'Within 5.5 kilometres of the coast'
 		when c.name='grid_ref' then 'Distance from your school in kilometres'
 		when c.name='pct_fsm' then 'Percentage of pupils eligible for free school meals'		-- strictly fsm, not disadv
-		when c.name='pct_fsm6' then 'Percentage of pupils eligible for free school meals in the past six years'
+		when c.name='pct_fsm6' then 'Percentage of pupils eligible for free school meals in the past six years (2019)'
 		when c.name='pct_eal' then 'Percentage of pupils who have English as an additional language'
 		when c.name='pct_white' then 'Percentage of pupils who are white'
 		when c.name='pct_black' then 'Percentage of pupils who are black'
@@ -86,7 +86,7 @@ select
 		when c.name='pupils' then 'Total number of pupils'
 		when c.name='comp_pupils' then 'Number of pupils of compulsory school age'
 		when c.name='pct_capacity' then 'Number of pupils on roll as a percentage of capacity'
-		when c.name='latest_ofsted' then 'Ofsted rating at the end of 2018/19'
+		when c.name='latest_ofsted' then 'Ofsted rating at the end of 2019/20'
 		when c.name='tpup_2019' then 'Number of pupils at the end of Key Stage 4, 2018/19'
 		when c.name='p8pup_2019' then 'Number of pupils included in Progress 8 calculations, 2018/19'
 		when c.name='p8pup_pp_2019' then 'Number of disadvantaged pupils included in Progress 8 calculations, 2018/19'
@@ -126,19 +126,18 @@ select
 		when c.name='total_teachers' then 'Total number of teachers'
 		when c.name='total_teachers_fte' then 'Full-time equivalent teachers'
 		when c.name='assistant_teacher_ratio' then 'Teaching assistant:teacher ratio'
-		when c.name='pupil_teacher_ratio' then 'Pupil:teacher ratio'
+		when c.name='pupil_teacher_ratio' then 'Pupil:qualified teacher ratio'
 		when c.name='pct_teachers_50' then 'Percentage of all teachers over the age of 50'
 		when c.name='pct_teachers_qts' then 'Percentage of all teachers with qualified teacher status'
 		when c.name='mean_salary_teachers' then 'Mean salary of all teachers'
-		when c.name='pct_teachers_main' then 'Percentage of classroom teachers on the main pay scale'
 		when c.name='pct_teachers_leadership' then 'Percentage of all teachers on the leadership pay scale'
 		when c.name='mean_sick_days' then 'Mean number of teacher sick days (teachers taking sick leave)'
 		when c.name='pct_temp_posts' then 'Percentage of full-time posts filled with temporary staff'
-		when c.name='income_per_pupil_2019' then 'Total income per pupil, 2017/18'
-		when c.name='income_per_pupil_2018' then 'Total income per pupil, 2016/17'
-		when c.name='income_per_pupil_2017' then 'Total income per pupil, 2015/16'
-		when c.name='fixed_excl' then 'Fixed period exclusions per 100 pupils, 2017/18'
-		when c.name='perm_excl' then 'Permanent exclusions per 100 pupils, 2017/18'
+		when c.name='income_per_pupil_2019' then 'Total income per pupil, 2018/19'
+		when c.name='income_per_pupil_2018' then 'Total income per pupil, 2017/18'
+		when c.name='income_per_pupil_2017' then 'Total income per pupil, 2016/17'
+		when c.name='fixed_excl' then 'Fixed period exclusions per 100 pupils, 2018/19'
+		when c.name='perm_excl' then 'Permanent exclusions per 100 pupils, 2018/19'
 	end,
 	case		-- group
 		when c.name='la_code' then 'School characteristics'
@@ -147,7 +146,7 @@ select
 		when c.name='gender_code' then 'School characteristics'
 		when c.name='religiouscharacter_code' then 'School characteristics'
 		when c.name='urn' then 'School characteristics'
-		when c.name='sch_id' then 'School characteristics'
+		when c.name='laestab' then 'School characteristics'
 		when c.name='schtype' then 'School characteristics'
 		when c.name='has_sixth_form' then 'School characteristics'
 		when c.name='grammar' then 'School characteristics'
@@ -211,7 +210,6 @@ select
 		when c.name='pct_teachers_50' then 'Workforce'
 		when c.name='pct_teachers_qts' then 'Workforce'
 		when c.name='mean_salary_teachers' then 'Workforce'
-		when c.name='pct_teachers_main' then 'Workforce'
 		when c.name='pct_teachers_leadership' then 'Workforce'
 		when c.name='mean_sick_days' then 'Workforce'
 		when c.name='pct_temp_posts' then 'Workforce'
@@ -233,7 +231,7 @@ select
 		when c.name='tfsm6cla1a_ks4' then 1
 	end,
 	case		-- isUnique
-		when c.name='sch_id' then 1
+		when c.name='laestab' then 1
 		when c.name='urn' then 1
 	end,
 	case		-- isFilter
@@ -241,7 +239,7 @@ select
 		when c.name='gender_code' then 1
 	end,
 	case		-- isFilterable
-		when c.name='sch_id' then 0
+		when c.name='laestab' then 0
 		when c.name='urn' then 0
 		when c.name='establishmentname' then 0
 		else 1
@@ -249,7 +247,7 @@ select
 	case		-- isVisible
 		when c.name='la_code' then 1
 		when c.name='establishmentname' then 1
-		when c.name='sch_id' then 1
+		when c.name='laestab' then 1
 		when c.name='schtype' then 1
 		when c.name='tpup_2019' then 1
 		when c.name='ks2aps' then 1
@@ -278,7 +276,8 @@ select
 		when c.name like 'a8%' then 1
 		when c.name like 'basics%' then 0
 		when c.name like 'tavent%' then 1
-		when c.name in ('total_teachers_fte','assistant_teacher_ratio','pupil_teacher_ratio','mean_sick_days') then 1
+		when c.name in ('total_absence','persistent_absence') then 1
+		when c.name in ('total_teachers_fte','pupil_teacher_ratio','mean_sick_days') then 1
 		when c.name='mean_salary_teachers' then 0
 		when c.name like 'income%' then 0
 		when c.name like 'grid_ref%' then 0
@@ -288,7 +287,7 @@ select
 		when c.name in ('pct_fsm','pct_fsm6','pct_eal','pct_white','pct_black','pct_asian','pct_chinese','pct_mixed','pct_otherunclassified') then 1		-- needed to overrule default displayScale of 100 for columns with datatype of percent
 	end,
 	case		-- showInHeader
-		when c.name='sch_id' then 1
+		when c.name='laestab' then 1
 		when c.name='urn' then 1
 	end,
 	case		-- targetValue
@@ -419,7 +418,6 @@ update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers, F
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_teachers_qts';
 update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_teachers_50';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_temp_posts';
-update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_teachers_main';
 update #meta set chart='"type":"funnel","xEnabled":true,"defaultX":"Teachers"' where column_name='pct_teachers_leadership';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='mean_salary_teachers';
 update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Teachers"' where column_name='mean_sick_days';
@@ -432,7 +430,7 @@ update #meta set chart='"type":"scatter","xEnabled":true,"defaultX":"Total pupil
 
 -- Set column aliases, that show in the front-end
 -- NB: Any changes made here will also need reflecting in the columns used as the basis for charts, and in any href references recorded above
-update #meta set field_name = 'DfE number' where column_name = 'sch_id';
+update #meta set field_name = 'DfE number' where column_name = 'laestab';
 update #meta set field_name = 'Local authority' where column_name = 'la_code';
 update #meta set field_name = 'Region' where column_name = 'gor_code';
 update #meta set field_name = 'School name' where column_name = 'establishmentname';
@@ -499,19 +497,18 @@ update #meta set field_name = 'Persistent absentee rate' where column_name = 'pe
 update #meta set field_name = 'Teachers' where column_name = 'total_teachers';
 update #meta set field_name = 'Teachers, FTE' where column_name = 'total_teachers_fte';
 update #meta set field_name = 'Assistant:teacher ratio' where column_name = 'assistant_teacher_ratio';
-update #meta set field_name = 'Pupil:teacher ratio' where column_name = 'pupil_teacher_ratio';
+update #meta set field_name = 'Pupil:qualified teacher ratio' where column_name = 'pupil_teacher_ratio';
 update #meta set field_name = 'Age 50+, %' where column_name = 'pct_teachers_50';
 update #meta set field_name = 'Qualified teacher status, %' where column_name = 'pct_teachers_qts';
-update #meta set field_name = 'Main pay scale, %' where column_name = 'pct_teachers_main';
 update #meta set field_name = 'Leadership pay scale, %' where column_name = 'pct_teachers_leadership';
 update #meta set field_name = 'Temporary staff, %' where column_name = 'pct_temp_posts';
 update #meta set field_name = 'Mean salary' where column_name = 'mean_salary_teachers';
 update #meta set field_name = 'Mean staff sick days' where column_name = 'mean_sick_days';
-update #meta set field_name = 'Income, 2018' where column_name = 'income_per_pupil_2019';
-update #meta set field_name = 'Income, 2017' where column_name = 'income_per_pupil_2018';
-update #meta set field_name = 'Income, 2016' where column_name = 'income_per_pupil_2017';
-update #meta set field_name = 'Fixed period exclusion rate, 2018' where column_name = 'fixed_excl';
-update #meta set field_name = 'Permanent exclusion rate, 2018' where column_name = 'perm_excl';
+update #meta set field_name = 'Income, 2019' where column_name = 'income_per_pupil_2019';
+update #meta set field_name = 'Income, 2018' where column_name = 'income_per_pupil_2018';
+update #meta set field_name = 'Income, 2017' where column_name = 'income_per_pupil_2017';
+update #meta set field_name = 'Fixed period exclusion rate, 2019' where column_name = 'fixed_excl';
+update #meta set field_name = 'Permanent exclusion rate, 2019' where column_name = 'perm_excl';
 
 declare @max int = (select max(ndx) from #meta);
 
@@ -556,7 +553,7 @@ order by
 select
 	json = '['
 	+inResults+','
-	+sch_id+','
+	+laestab+','
 	+urn+','
 	+establishmentname+','
 	+la_code+','
@@ -627,7 +624,6 @@ select
 	+pct_teachers_qts+','
 	+pct_teachers_50+','
 	+pct_temp_posts+','
-	+pct_teachers_main+','
 	+pct_teachers_leadership+','
 	+mean_salary_teachers+','
 	+mean_sick_days+','
@@ -647,7 +643,7 @@ from
 select
 	json = '['
 	+inResults+','
-	+sch_id+','
+	+laestab+','
 	+urn+','
 	+establishmentname+','
 	+la_code+','
@@ -718,7 +714,6 @@ select
 	+pct_teachers_qts+','
 	+pct_teachers_50+','
 	+pct_temp_posts+','
-	+pct_teachers_main+','
 	+pct_teachers_leadership+','
 	+mean_salary_teachers+','
 	+mean_sick_days+','

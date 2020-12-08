@@ -10,7 +10,7 @@ as
 begin
 	declare @Ret varchar(8000);
 
-	select @Ret=nullif(nullif(nullif(nullif(nullif(nullif(nullif(nullif(cast(@Text as varchar(max)),'NA'),'DNS'),'SUPP'),'x'),'..'),'.'),'>'),'')
+	select @Ret=nullif(nullif(nullif(nullif(nullif(nullif(nullif(nullif(nullif(cast(@Text as varchar(max)),'NA'),'DNS'),'SUPP'),'x'),'..'),'.'),'>'),''),':')
 	return @Ret
 end
 go
